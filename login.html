@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Account | Hook</title>
+<link rel="stylesheet" href="style.css"></head><body>
+<main>
+<section class="phero"><div class="wrap"><span class="script" data-ar="حسابك">Your account</span><h1 data-ar="الدخول">Sign in</h1></div></section>
+<section style="padding-top:20px"><div class="wrap" id="box"></div></section>
+</main><script src="config.js"></script><script src="seed.js"></script><script src="app.js"></script>
+<script>
+let mode='login',pend=null;
+const NOSRV=()=>t('Cannot reach the server. Check the Apps Script link in config.js.','مش قادر يتصل بالسيرفر. اتأكد من رابط Apps Script في config.js.');
+async function call(url,d){let r,j=null;try{r=await post(url,d);j=await r.json()}catch(x){}return{ok:!!(r&&r.ok),j:j}}
+function gsi(){return new Promise(r=>{if(window.google&&google.accounts)return r();const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;s.onload=s.onerror=()=>r();document.head.appendChild(s)})}
+async function drawGoogle(){
+  await gsi();const box=$('gbtn');if(!box||!(window.google&&google.accounts&&google.accounts.id))return;
+  google.accounts.id.initialize({client_id:window.HOOK_GOOGLE_ID,callback:onGoogle});
+  google.accounts.id.renderButton(box,{theme:'outline',size:'large',shape:'pill',text:'continue_with',width:Math.min(340,box.clientWidth||340),locale:ar()?'ar':'en'});
+}
+async function onGoogle(resp){
+  const e=$('err');if(e)e.textContent=t('Signing you in...','بيسجّل دخولك...');
+  const x=await call('/api/google',{credential:resp.credential,lang:ar()?'ar':'en',remember:true});
+  if(!x.j){if(e)e.textContent=NOSRV();return}
+  if(x.ok)done(x.j.user);else if(e)e.textContent=errT(x.j.error||'Error');
+}
+function done(user){location.href=user.role==='admin'?'dashboard.html':'index.html'}
+function draw(){
+  const b=$('box');
+  if(ME){b.innerHTML='<div class="card" style="max-width:560px"><h3>'+esc(ME.name||ME.username)+'</h3><p>'+esc(ME.email)+'</p><div class="btns" style="margin-top:18px"><a class="btn" href="account.html">'+t('Account settings','إعدادات الحساب')+'</a>'+(ME.role==='admin'?'<a class="btn ghost" href="dashboard.html">'+t('Dashboard','لوحة التحكم')+'</a>':'')+'<button class="btn ghost" id="out">'+t('Log out','تسجيل الخروج')+'</button></div></div>';
+    $('out').onclick=async()=>{await post('/api/logout',{});location.reload()};return}
+  if(pend){
+    b.innerHTML='<form class="card" id="cf"><h3>'+t('Check your email','شوف إيميلك')+'</h3><p>'+t('We sent a 6-digit code to ','بعتنالك كود من 6 أرقام على ')+'<b dir="ltr">'+esc(pend.hint)+'</b></p><label><span>'+t('Code','الكود')+'</span><input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required autofocus></label><button class="btn" type="submit">'+t('Confirm','تأكيد')+'</button><button class="btn ghost" type="button" id="bk">'+t('Back','رجوع')+'</button><p class="msg err" id="err"></p></form>';
+    $('bk').onclick=()=>{pend=null;draw()};
+    $('cf').onsubmit=async e=>{e.preventDefault();const btn=e.target.querySelector('button[type=submit]'),tx=btn.textContent;btn.disabled=true;btn.textContent='...';
+      const x=await call('/api/login2',{pending:pend.token,code:e.target.code.value,remember:pend.remember});btn.disabled=false;btn.textContent=tx;
+      if(!x.j){$('err').textContent=NOSRV();return}if(x.ok)done(x.j.user);else $('err').textContent=errT(x.j.error||'Error')};
+    return}
+  const reg=mode==='register';
+  b.innerHTML='<form class="card" id="af"><div class="tabs"><button type="button" data-m="login" aria-pressed="'+!reg+'">'+t('Sign in','دخول')+'</button><button type="button" data-m="register" aria-pressed="'+reg+'">'+t('Create account','اعمل حساب')+'</button></div>'
+   +(window.HOOK_GOOGLE_ID?'<div class="gwrap" id="gbtn"></div><div class="or"><span>'+t('or','أو')+'</span></div>':'')
+   +(reg?'<label><span>'+t('Username','اسم المستخدم')+'</span><input name="username" autocomplete="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]+"></label><label><span>'+t('Email','الإيميل')+'</span><input name="email" type="email" autocomplete="email" required></label>'
+        :'<label><span>'+t('Username or email','اسم المستخدم أو الإيميل')+'</span><input name="id" autocomplete="username" required></label>')
+   +'<label><span>'+t('Password','الباسورد')+'</span><input name="password" type="password" autocomplete="'+(reg?'new-password':'current-password')+'" required minlength="'+(reg?8:1)+'"></label>'
+   +'<label class="chk"><input type="checkbox" name="remember" checked><span>'+t('Keep me signed in','خليني مسجّل دخول')+'</span></label>'
+   +'<button class="btn" type="submit">'+(reg?t('Create account','اعمل الحساب'):t('Sign in','دخول'))+'</button><p class="msg err" id="err"></p></form>';
+  if(window.HOOK_GOOGLE_ID)drawGoogle();
+  b.querySelector('.tabs').onclick=e=>{const x=e.target.closest('button');if(x){mode=x.dataset.m;draw()}};
+  $('af').onsubmit=async e=>{
+    e.preventDefault();const d=Object.fromEntries(new FormData(e.target));d.remember=e.target.remember.checked;if(reg)d.lang=ar()?'ar':'en';
+    const btn=e.target.querySelector('button.btn[type=submit]'),txt=btn.textContent;btn.disabled=true;btn.textContent='...';$('err').textContent='';
+    const x=await call(reg?'/api/register':'/api/login',d);btn.disabled=false;btn.textContent=txt;
+    if(!x.j){$('err').textContent=NOSRV();return}
+    if(x.ok&&x.j.twofa){pend={token:x.j.pending,hint:x.j.hint,remember:d.remember};draw();return}
+    if(x.ok)done(x.j.user);else $('err').textContent=errT(x.j.error||'Error');
+  };
+}
+draw();if(window.AUTH_DONE&&ME)draw();
+document.addEventListener('auth',()=>{if(ME)draw()});document.addEventListener('langchange',draw);
+document.addEventListener('backend',()=>{const e=$('err');if(e&&!e.textContent)e.textContent=t('The backend has no data yet. In Apps Script run setup(), then deploy a new version.','الباك إند لسه فاضي. في Apps Script شغّل setup() وبعدين اعمل Deploy لنسخة جديدة.')});if(window.BACKEND_EMPTY)document.dispatchEvent(new Event('backend'));
+</script></body></html>

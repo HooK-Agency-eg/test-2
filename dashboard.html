@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard | Hook</title><meta name="robots" content="noindex">
+<link rel="stylesheet" href="style.css"></head><body>
+<main>
+<section class="phero"><div class="wrap"><span class="script" data-ar="لوحة التحكم">Admin</span><h1 data-ar="الداشبورد">Dashboard</h1></div></section>
+<section style="padding-top:20px"><div class="wrap" id="dash"><p>…</p></div></section>
+</main><script src="config.js"></script><script src="seed.js"></script><script src="app.js"></script>
+<script>
+let ST=null;
+const ago=s=>{try{return new Date(s).toLocaleString(ar()?'ar-EG':'en-GB',{dateStyle:'medium',timeStyle:'short'})}catch(e){return ''}};
+const day=s=>String(s||'').slice(0,10);
+const ORD={new:['new','جديد'],confirmed:['confirmed','مؤكد'],done:['done','تم'],cancelled:['cancelled','ملغي']};
+const RST={open:['Open','مفتوح'],answered:['Answered','اتردّ عليه'],closed:['Closed','اتقفل']};
+const kpi=(n,en,a)=>'<div class="card kpi"><b>'+n+'</b>'+t(en,a)+'</div>';
+const tbl=(head,rows)=>'<div class="scroll"><table><tr>'+head.map(h=>'<th>'+h+'</th>').join('')+'</tr>'+rows.join('')+'</table></div>';
+const empty=(en,a)=>'<p style="opacity:.7">'+t(en,a)+'</p>';
+function draw(){
+  if(!ST)return;const s=ST,mx=Math.max(1,...s.days.map(d=>d.n)),c=s.counts,openR=s.reports.filter(r=>r.status!=='closed'&&!r.replies.length).length;
+  const reps=[...s.reports].sort((a,b)=>(a.status==='closed')-(b.status==='closed')||(b.at>a.at?1:-1));
+  $('dash').innerHTML=
+   '<div class="kpis">'+kpi(s.today,'Visitors today','زوار النهارده')+kpi(s.week,'Visitors, last 7 days','زوار آخر 7 أيام')+kpi(s.visits,'Total visits (once per visitor per day)','إجمالي الزيارات (مرة للزائر في اليوم)')+kpi(s.unique,'Different visitors, all time','زوار مختلفين من الأول')+kpi(s.pageviews||0,'Page views','مشاهدات الصفحات')+kpi(s.accounts,'Accounts','عدد الحسابات')+kpi(s.orders.length,'Orders','الطلبات')+kpi(s.revenue+' '+cur(),'Order value','قيمة الطلبات')+kpi(openR,'Reports waiting','بلاغات مستنية ردك')+'</div>'
+  +'<p style="margin-top:14px;opacity:.85;font-size:.92rem">'+t('Each visitor is recognised by a random ID saved in their browser, so opening many pages counts as one visit. A website cannot read a visitor\'s IP or MAC address, and one IP is often shared by many people.','كل زائر بيتعرّف بكود عشوائي محفوظ في متصفحه، فلو فتح صفحات كتير بيتحسب زيارة واحدة. الموقع مبيقدرش يقرا الـ IP ولا الـ MAC بتاع الجهاز، والـ IP الواحد بيكون مشترك بين ناس كتير.')+'</p>'
+  +'<div class="cols"><div class="card"><h3>'+t('Visitors per day, last 14 days','الزوار في اليوم، آخر 14 يوم')+'</h3><div class="days">'+s.days.map(d=>'<div style="height:'+Math.max(2,d.n/mx*100)+'%" title="'+d.d+'"><span>'+(d.n||'')+'</span></div>').join('')+'</div></div>'
+  +'<div class="card"><h3>'+t('Most viewed projects','أكتر المشاريع مشاهدة')+'</h3>'+(s.topWork.some(w=>w.views)?tbl(['#',t('Project','المشروع'),t('Category','التصنيف'),t('Views','المشاهدات'),'%'],s.topWork.slice(0,10).map((w,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(w.name)+'</td><td>'+esc(catName('work',w.cat)||'-')+'</td><td><b>'+w.views+'</b></td><td>'+w.share+'%</td></tr>')):empty('No views yet.','لسه مفيش مشاهدات.'))+'</div>'
+  +'<div class="card"><h3>'+t('Best-selling packages','الباقات الأكتر مبيعاً')+'</h3>'+(s.topProducts.length?tbl([t('Package','الباقة'),t('Sold','اتباع'),t('Revenue','الإيراد')],s.topProducts.map(p=>'<tr><td>'+esc(p.name)+'</td><td><b>'+p.qty+'</b></td><td>'+p.revenue+' '+cur()+'</td></tr>')):empty('No orders yet.','لسه مفيش طلبات.'))+'</div>'
+  +'<div class="card"><h3>'+t('Top buyers (accounts)','أكتر العملاء شراءً (أصحاب الحسابات)')+'</h3>'+(s.topBuyers.length?tbl(['#',t('Account','الحساب'),t('Orders','الطلبات'),t('Spent','دفع'),t('Last order','آخر طلب')],s.topBuyers.slice(0,10).map((b,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(b.user)+'</td><td>'+b.orders+'</td><td><b>'+b.spent+' '+cur()+'</b></td><td>'+esc(day(b.last))+'</td></tr>')):empty('No purchases from signed-in accounts yet.','لسه مفيش مشتريات من أصحاب الحسابات.'))+'</div></div>'
+  +'<div class="card" style="margin-top:20px"><h3>'+t('Problem reports','بلاغات المشاكل')+' ('+s.reports.length+')</h3>'+(reps.length?reps.map(r=>'<div class="thread"><b>'+esc(r.subject)+'</b> <span class="badge">'+t(...RST[r.status]||[r.status,r.status])+'</span> <small style="opacity:.6">'+esc(r.username)+' · '+esc(ago(r.at))+'</small><div class="bub">'+esc(r.message)+'</div>'
+     +r.replies.map(y=>'<div class="bub sup"><small>'+t('Hook Support','دعم هوك')+' · '+esc(ago(y.at))+'</small><br>'+esc(y.text)+'</div>').join('')
+     +(r.status!=='closed'?'<textarea id="rt-'+esc(r.id)+'" rows="2" placeholder="'+t('Reply as Hook Support...','رد باسم دعم هوك...')+'" style="margin-top:10px"></textarea><div class="btns" style="margin-top:8px"><button class="btn" data-reply="'+esc(r.id)+'">'+t('Send reply','ابعت الرد')+'</button><button class="btn ghost" data-st="'+esc(r.id)+'|closed">'+t('Close','اقفل البلاغ')+'</button></div>':'<div class="btns" style="margin-top:8px"><button class="btn ghost" data-st="'+esc(r.id)+'|open">'+t('Reopen','افتح تاني')+'</button></div>')
+     +'<p class="msg" id="rm-'+esc(r.id)+'"></p></div>').join(''):empty('No reports.','مفيش بلاغات.'))+'</div>'
+  +'<div class="card" style="margin-top:20px"><h3>'+t('Orders','الطلبات')+'</h3>'+(s.orders.length?tbl([t('Date','التاريخ'),t('Account','الحساب'),t('Items','العناصر'),t('Total','الإجمالي'),t('Status','الحالة')],s.orders.map(o=>'<tr><td>'+esc(day(o.at))+'</td><td>'+esc(o.user||'-')+'</td><td>'+o.items.map(i=>esc(i.name)+' '+esc(lineTxt(i)||'')).join('، ')+'</td><td>'+o.total+'</td><td><select data-ord="'+esc(o.id)+'">'+Object.keys(ORD).map(x=>'<option value="'+x+'"'+(x==o.status?' selected':'')+'>'+t(...ORD[x])+'</option>').join('')+'</select></td></tr>')):empty('No orders yet.','لسه مفيش طلبات.'))+'</div>'
+  +'<div class="card" style="margin-top:20px"><h3>'+t('Accounts created on the site','الحسابات اللي اتعملت على الموقع')+' ('+s.accounts+')</h3>'+tbl([t('Name','الاسم'),t('Username','اسم المستخدم'),t('Email','الإيميل'),t('Role','الدور'),t('Orders','الطلبات'),t('Spent','دفع'),t('Joined','التسجيل')],s.users.map(u=>'<tr><td>'+esc(u.name)+'</td><td>'+esc(u.username)+'</td><td dir="ltr">'+esc(u.email)+'</td><td>'+(u.role==='admin'?t('Admin','أدمن'):t('Client','عميل'))+'</td><td>'+u.orders+'</td><td>'+u.spent+'</td><td>'+esc(day(u.at))+'</td></tr>'))+'</div>'
+  +'<div class="cols"><div class="card"><h3>'+t('Page views','مشاهدات الصفحات')+'</h3><p>'+t('Projects','المشاريع')+': '+c.work+' · '+t('Clients','العملاء')+': '+c.clients+' · '+t('Packages','الباقات')+': '+c.products+'</p>'+tbl([t('Page','الصفحة'),t('Views','المشاهدات')],s.pages.map(p=>'<tr><td dir="ltr">'+esc(p.p)+'</td><td>'+p.n+'</td></tr>'))
+   +'<p style="margin-top:14px" class="btns"><a class="btn" href="portfolio.html">'+t('Edit projects','تعديل المشاريع')+'</a><a class="btn" href="shop.html">'+t('Edit price quotes','تعديل عروض الأسعار')+'</a><a class="btn" href="index.html">'+t('Edit clients and texts','تعديل العملاء والنصوص')+'</a></p></div>'
+  +'<form class="card" id="pw"><h3>'+t('Change admin password','تغيير باسورد الأدمن')+'</h3><label><span>'+t('Current password','الباسورد الحالي')+'</span><input name="old" type="password" autocomplete="current-password" required></label><label><span>'+t('New password (8+ characters)','الباسورد الجديد (8 حروف أو أكتر)')+'</span><input name="new" type="password" autocomplete="new-password" minlength="8" required></label><button class="btn">'+t('Save','حفظ')+'</button><p class="msg" id="pm"></p></form></div>';
+  $('pw').onsubmit=async e=>{e.preventDefault();const r=await post('/api/admin/password',Object.fromEntries(new FormData(e.target))),j=await r.json().catch(()=>({}));$('pm').className='msg'+(r.ok?'':' err');$('pm').textContent=r.ok?t('Password changed.','الباسورد اتغيّر.'):errT(j.error||'Bad response');if(r.ok)e.target.reset()};
+  document.querySelectorAll('[data-ord]').forEach(sel=>sel.onchange=()=>fetch('/api/admin/orders/'+sel.dataset.ord,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({status:sel.value})}).then(load));
+}
+document.addEventListener('click',async e=>{
+  const rp=e.target.closest('[data-reply]'),st=e.target.closest('[data-st]');
+  if(rp){const id=rp.dataset.reply,txt=$('rt-'+id).value.trim(),m=$('rm-'+id);if(!txt){m.className='msg err';m.textContent=errT('Write a reply first');return}
+    rp.disabled=true;m.className='msg';m.textContent=t('Sending...','بيبعت...');
+    const r=await fetch('/api/admin/reports/'+id+'/reply',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:txt})});
+    if(r.ok)load();else{rp.disabled=false;m.className='msg err';m.textContent=errT((await r.json().catch(()=>({}))).error||'Bad response')}}
+  if(st){const[id,status]=st.dataset.st.split('|');await fetch('/api/admin/reports/'+id,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({status})});load()}
+});
+async function load(){const r=await fetch('/api/admin/stats');if(r.status===401){location.href='login.html';return}ST=await r.json();draw()}
+load().catch(()=>{$('dash').innerHTML='<p>'+t('The server is not running.','السيرفر مش شغال.')+'</p>'});
+document.addEventListener('langchange',draw);
+</script></body></html>

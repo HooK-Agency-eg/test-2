@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shop | Hook</title>
+<link rel="stylesheet" href="style.css"></head><body>
+<main>
+<section class="phero"><div class="wrap"><span class="script" data-ar="بنبيع إيه">What we sell</span><h1 data-ar="المتجر">Shop</h1>
+<p data-ar="اختار اللي يناسبك، ضيفه للسلة وابعت الطلب على واتساب.">Pick what you need, add it to your cart and send the order on WhatsApp.</p></div></section>
+<section style="padding-top:20px"><div class="wrap">
+<div class="tabs" id="stabs" role="group" aria-label="Sections"></div>
+<div id="deals"></div>
+<div class="grid shop" id="shop"></div>
+</div></section>
+</main><script src="config.js"></script><script src="seed.js"></script><script src="app.js"></script>
+<script>
+let sc='all',timer=null;
+const isAdmin=()=>ME&&ME.role==='admin';
+function leftTxt(ms){
+  const s=Math.max(0,Math.floor(ms/1000)),d=Math.floor(s/86400),h=String(Math.floor(s%86400/3600)).padStart(2,'0'),m=String(Math.floor(s%3600/60)).padStart(2,'0'),x=String(s%60).padStart(2,'0');
+  return (d?d+' '+t(d==1?'day':'days','يوم')+' ':'')+h+':'+m+':'+x;
+}
+function card(p,deal){
+  const on=discOn(p),per=isPer(p),course=p.kind==='course',e=effPrice(p);
+  const sfx=per?' / '+unitTxt(p.unit,1):(p.unit!=='item'&&p.amount?' · '+t('pack of ','عبوة ')+fm(p.amount)+' '+unitTxt(p.unit,p.amount):(L(p.per)?' · '+esc(L(p.per)):''));
+  const label=L(p.tag)||catName('shop',p.cat);
+  return '<article class="card prod'+(on?' deal':'')+'" data-k="products" data-id="'+esc(p.id)+'">'
+   +(on?'<span class="dbadge">-'+p.disc+'%</span>':'')
+   +(p.img?'<div class="pimg"><img src="'+esc(p.img)+'" alt="'+esc(L(p.name))+'" loading="lazy"></div>':'')
+   +(course?'<span class="tag cbadge">'+t('Course','كورس')+'</span> ':'')+(label?'<span class="tag">'+esc(label)+'</span>':'')
+   +'<h3>'+esc(L(p.name))+'</h3>'
+   +(L(p.desc)?'<p class="pd">'+esc(L(p.desc))+'</p>':'')
+   +(course&&(p.episodes||p.hours)?'<p class="cmeta">▶ '+(p.episodes?p.episodes+' '+t(p.episodes==1?'episode':'episodes','حلقة'):'')+(p.episodes&&p.hours?' · ':'')+(p.hours?fm(p.hours)+' '+t('hours','ساعة'):'')+'</p>':'')
+   +(p.items.length?'<ul class="tick">'+p.items.map(x=>'<li>'+esc(L(x))+'</li>').join('')+'</ul>':'')
+   +'<div class="price">'+(on?'<s>'+fm(p.price)+'</s> ':'')+fm(e)+' '+cur()+'<small>'+sfx+'</small></div>'
+   +(on&&p.discEnds?'<div class="cd" data-end="'+esc(p.discEnds)+'"><span>'+t('Offer ends in','العرض بينتهي بعد')+'</span> <b>'+leftTxt(Date.parse(p.discEnds)-Date.now())+'</b></div>':'')
+   +(per?'<div class="qty"><button type="button" data-d="-1" aria-label="-">−</button><input type="number" inputmode="decimal" value="'+minOf(p)+'" min="'+minOf(p)+'" step="'+stepOf(p)+'" aria-label="'+t('Quantity','الكمية')+'"><span>'+unitTxt(p.unit,2)+'</span><button type="button" data-d="1" aria-label="+">+</button></div>':'')
+   +'<button class="btn" data-add="'+esc(p.id)+'">'+(course?t('Enroll','اشترك'):t('Add to cart','ضيف للسلة'))+'</button></article>';
+}
+function draw(){
+  const all=DB.products.map(pdef),shown=new Set(all.map(p=>p.cat));
+  const list=cats('shop').filter(c=>isAdmin()||shown.has(c.id));
+  if(sc!=='all'&&!list.some(c=>c.id===sc))sc='all';
+  $('stabs').innerHTML=list.length>1?[['all',t('All','الكل')]].concat(list.map(c=>[c.id,L(c.name)])).map(c=>'<button data-s="'+esc(c[0])+'" aria-pressed="'+(c[0]==sc)+'">'+esc(c[1])+'</button>').join(''):'';
+  const deals=all.filter(p=>discOn(p)),rest=sc==='all'?all.filter(p=>!discOn(p)):all.filter(p=>p.cat===sc).sort((a,b)=>discOn(b)-discOn(a));
+  $('deals').innerHTML=sc==='all'&&deals.length?'<div class="dealsband"><h2>'+t('Hot deals','عروض ساخنة')+'</h2><div class="grid shop">'+deals.map(p=>card(p,true)).join('')+'</div></div>':'';
+  $('shop').innerHTML=rest.map(p=>card(p)).join('')||(deals.length&&sc==='all'?'':'<p style="opacity:.8">'+t('Nothing here yet.','لسه مفيش حاجة هنا.')+'</p>');
+  clearInterval(timer);if(document.querySelector('.cd'))timer=setInterval(tick,1000);
+}
+function tick(){
+  let over=false;document.querySelectorAll('.cd').forEach(c=>{const ms=Date.parse(c.dataset.end)-Date.now();if(ms<=0)over=true;else c.querySelector('b').textContent=leftTxt(ms)});
+  if(over)draw();
+}
+onContent(draw);document.addEventListener('auth',()=>{if(DB)draw()});
+document.addEventListener('click',e=>{
+  const s=e.target.closest('[data-s]');if(s){sc=s.dataset.s;draw();return}
+  const q=e.target.closest('.qty button');
+  if(q){const i=q.parentNode.querySelector('input'),st=+i.step||1,mn=+i.min||0;i.value=Math.max(mn,Math.round((+i.value+ +q.dataset.d*st)*100)/100);return}
+  const b=e.target.closest('[data-add]');
+  if(b){const c=b.closest('.card'),i=c.querySelector('.qty input');addToCart(b.dataset.add,i?+i.value:1)}
+});
+</script></body></html>

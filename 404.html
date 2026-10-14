@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hook</title></head><body>
+<p style="font-family:sans-serif;padding:24px">Loading… <a href="./">Home</a></p>
+<script>
+/* hosts that serve /page only as /page.html end up here: send the visitor to the real file */
+var p=location.pathname.replace(/\/+$/,'');
+if(p&&!/\.\w+$/.test(p))location.replace(p+'.html'+location.search+location.hash);
+else document.body.firstElementChild.textContent='Page not found. ';
+</script></body></html>

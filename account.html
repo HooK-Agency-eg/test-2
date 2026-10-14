@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Account | Hook</title><meta name="robots" content="noindex">
+<link rel="stylesheet" href="style.css"></head><body>
+<main>
+<section class="phero"><div class="wrap"><span class="script" data-ar="حسابك">Your account</span><h1 data-ar="إعدادات الحساب">Account settings</h1></div></section>
+<section style="padding-top:20px"><div class="wrap"><div class="set" id="acc"></div></div></section>
+</main><script src="config.js"></script><script src="seed.js"></script><script src="app.js"></script>
+<script>
+let REPORTS=[],ORDERS=[];
+const say=(id,ok,m)=>{const e=$(id);if(e){e.className='msg'+(ok?'':' err');e.textContent=m}};
+const send=async(url,body,msgId,doneMsg,after)=>{
+  say(msgId,true,t('Saving...','بيحفظ...'));
+  let r,j={};try{r=await post(url,body);j=await r.json().catch(()=>({}))}catch(e){say(msgId,false,t('Cannot reach the server.','مش قادر يتصل بالسيرفر.'));return}
+  if(r.ok){say(msgId,true,doneMsg);if(after)await after(j)}else say(msgId,false,errT(j.error||'Bad response'));
+};
+function resize(file){return new Promise((ok,no)=>{const i=new Image(),u=URL.createObjectURL(file);i.onload=()=>{const s=256,c=document.createElement('canvas');c.width=c.height=s;const m=Math.min(i.width,i.height);c.getContext('2d').drawImage(i,(i.width-m)/2,(i.height-m)/2,m,m,0,0,s,s);URL.revokeObjectURL(u);c.toBlob(b=>b?ok(b):no(),'image/jpeg',.85)};i.onerror=no;i.src=u})}
+const ago=s=>{try{return new Date(s).toLocaleString(ar()?'ar-EG':'en-GB',{dateStyle:'medium',timeStyle:'short'})}catch(e){return ''}};
+const stT=s=>({open:t('Open','مفتوح'),answered:t('Answered','اتردّ عليه'),closed:t('Closed','اتقفل')}[s]||s);
+async function loadOrders(){try{const r=await post('/api/account/orders',{});if(r.ok)ORDERS=(await r.json()).items||[]}catch(e){}}
+const ordSt=s=>({new:t('New','جديد'),confirmed:t('Confirmed','مؤكد'),done:t('Done','تم'),cancelled:t('Cancelled','ملغي')}[s]||s);
+const dayOf=s=>String(s||'').slice(0,10);
+async function loadReports(){try{const r=await post('/api/account/reports',{});if(r.ok)REPORTS=(await r.json()).items||[]}catch(e){}}
+function draw(){
+  const A=$('acc');
+  if(!ME){A.innerHTML='<div class="card"><p>'+t('Please sign in first.','سجّل دخولك الأول.')+'</p><p style="margin-top:14px"><a class="btn" href="login.html">'+t('Sign in','تسجيل الدخول')+'</a></p></div>';return}
+  const init=esc((ME.name||ME.username).slice(0,1).toUpperCase());
+  A.innerHTML=
+  '<div class="card"><h3>'+t('Profile','البيانات الشخصية')+'</h3><div class="prow"><div class="avbig" id="avbig">'+(ME.avatar?'<img data-keep src="'+esc(ME.avatar)+'" alt="" data-i="'+init+'" onerror="this.replaceWith(document.createTextNode(this.dataset.i))">':init)+'</div><div><label class="btn ghost" style="cursor:pointer">'+t('Change photo','غيّر الصورة')+'<input type="file" id="avf" accept="image/*" hidden></label> '+(ME.avatar?'<button class="btn ghost" id="avr" type="button">'+t('Remove','شيل الصورة')+'</button>':'')+'<p class="msg" id="m-av"></p></div></div>'
+   +'<form id="f-name"><label><span>'+t('Name','الاسم')+'</span><input name="name" value="'+esc(ME.name||'')+'" maxlength="40" required></label><button class="btn">'+t('Save name','احفظ الاسم')+'</button><p class="msg" id="m-name"></p></form>'
+   +'<p style="opacity:.75;margin-top:6px">'+t('Username','اسم المستخدم')+': <b dir="ltr">'+esc(ME.username)+'</b></p></div>'
+  +'<div class="card"><h3>'+t('Email','الإيميل')+'</h3><form id="f-mail"><label><span>'+t('New email','الإيميل الجديد')+'</span><input name="email" type="email" value="'+esc(ME.email)+'" required></label><label><span>'+t('Current password (to confirm)','الباسورد الحالي (للتأكيد)')+'</span><input name="password" type="password" autocomplete="current-password" required></label><button class="btn">'+t('Change email','غيّر الإيميل')+'</button><p class="msg" id="m-mail"></p></form></div>'
+  +'<div class="card"><h3>'+t('Security','الأمان')+'</h3><form id="f-pw"><label><span>'+t('Current password','الباسورد الحالي')+'</span><input name="old" type="password" autocomplete="current-password" required></label><label><span>'+t('New password (8+ characters)','الباسورد الجديد (8 حروف أو أكتر)')+'</span><input name="new" type="password" autocomplete="new-password" minlength="8" required></label><button class="btn">'+t('Change password','غيّر الباسورد')+'</button><p class="msg" id="m-pw"></p></form>'
+   +'<div class="sw"><span><b>'+t('Login protection','حماية تسجيل الدخول')+'</b><br><small>'+t('We email you a 6-digit code every time you sign in.','هنبعتلك كود من 6 أرقام على إيميلك كل مرة تسجّل دخول.')+'</small></span><input class="tg" type="checkbox" id="tg-2fa" '+(ME.twofa?'checked':'')+' aria-label="'+t('Login protection','حماية تسجيل الدخول')+'"></div><p class="msg" id="m-2fa"></p></div>'
+  +'<div class="card"><h3>'+t('Notifications','الإشعارات')+'</h3><div class="sw"><span><b>'+t('Email notifications','إشعارات البريد')+'</b><br><small>'+t('Welcome, orders, password changes, new portfolio work and support replies.','الترحيب والطلبات وتغيير الباسورد والشغل الجديد وردود الدعم.')+'</small></span><input class="tg" type="checkbox" id="tg-notif" '+(ME.notif?'checked':'')+' aria-label="'+t('Email notifications','إشعارات البريد')+'"></div><p class="msg" id="m-notif"></p><p style="opacity:.75">'+t('Notifications inside the website (the bell) always stay on.','الإشعارات جوه الموقع (الجرس) بتفضل شغالة دايماً.')+'</p></div>'
+  +'<div class="card" id="orders"><h3>'+t('My orders','طلباتي')+'</h3>'+(ORDERS.length?ORDERS.map(o=>'<div class="thread"><div class="oh"><b>'+esc(dayOf(o.at))+'</b><span class="badge">'+esc(ordSt(o.status))+'</span><b class="ot">'+fm(o.total)+' '+cur()+'</b></div><ul class="tick" style="margin-top:8px">'+o.items.map(i=>'<li>'+esc(i.name)+' '+esc(lineTxt(i))+(i.disc?' <small>(-'+i.disc+'%)</small>':'')+' — '+fm(i.q*i.price)+' '+cur()+'</li>').join('')+'</ul></div>').join(''):'<p style="opacity:.75">'+t('No orders yet. Your orders will appear here.','لسه معملتش أي طلب. طلباتك هتظهر هنا.')+'</p>')+'</div>'
+  +'<div class="card" id="report"><h3>'+t('Report a problem','إبلاغ عن مشكلة')+'</h3><form id="f-rep"><label><span>'+t('Subject','العنوان')+'</span><input name="subject" maxlength="100" required></label><label><span>'+t('What happened?','حصل إيه؟')+'</span><textarea name="message" rows="4" maxlength="2000" required></textarea></label><button class="btn">'+t('Send to Hook Support','ابعت لدعم هوك')+'</button><p class="msg" id="m-rep"></p></form>'
+   +(REPORTS.length?'<h3 style="margin-top:24px">'+t('Your reports','بلاغاتك')+'</h3>'+REPORTS.map(x=>'<div class="thread"><b>'+esc(x.subject)+'</b> <span class="badge">'+stT(x.status)+'</span> <small style="opacity:.6">'+esc(ago(x.at))+'</small><div class="bub me">'+esc(x.message)+'</div>'+x.replies.map(y=>'<div class="bub sup"><small>'+t('Hook Support','دعم هوك')+' · '+esc(ago(y.at))+'</small><br>'+esc(y.text)+'</div>').join('')+'</div>').join(''):'')+'</div>';
+  $('avf').onchange=async e=>{const f=e.target.files[0];if(!f)return;say('m-av',true,t('Uploading...','بيرفع...'));
+    try{const b=await resize(f),r=await fetch('/api/account/avatar',{method:'POST',body:b}),j=await r.json().catch(()=>({}));
+      if(r.ok){ME=j.user;await refreshMe();draw();say('m-av',true,t('Photo updated.','الصورة اتغيّرت.'))}else say('m-av',false,errT(j.error||'Bad response'))}
+    catch(x){say('m-av',false,t('Could not read this image.','معرفناش نقرا الصورة دي.'))}};
+  if($('avr'))$('avr').onclick=async()=>{const r=await post('/api/account/avatar',{remove:true});if(r.ok){ME=(await r.json()).user;await refreshMe();draw()}};
+  $('f-name').onsubmit=e=>{e.preventDefault();send('/api/account/profile',{name:e.target.name.value},'m-name',t('Saved.','اتحفظ.'),async j=>{ME=j.user;await refreshMe()})};
+  $('f-mail').onsubmit=e=>{e.preventDefault();send('/api/account/email',{email:e.target.email.value,password:e.target.password.value},'m-mail',t('Email changed.','الإيميل اتغيّر.'),async j=>{ME=j.user;e.target.password.value='';await refreshMe()})};
+  $('f-pw').onsubmit=e=>{e.preventDefault();send('/api/account/password',{old:e.target.old.value,new:e.target.new.value},'m-pw',t('Password changed.','الباسورد اتغيّر.'),()=>e.target.reset())};
+  $('tg-2fa').onchange=e=>send('/api/account/profile',{twofa:e.target.checked},'m-2fa',e.target.checked?t('Login protection is on.','حماية الدخول اتفعّلت.'):t('Login protection is off.','حماية الدخول اتقفلت.'),async j=>{ME=j.user});
+  $('tg-notif').onchange=e=>send('/api/account/profile',{notif:e.target.checked},'m-notif',e.target.checked?t('Email notifications are on.','إشعارات البريد اتفعّلت.'):t('Email notifications are off.','إشعارات البريد اتقفلت.'),async j=>{ME=j.user});
+  $('f-rep').onsubmit=e=>{e.preventDefault();const f=e.target;send('/api/account/report',{subject:f.subject.value,message:f.message.value},'m-rep',t('Sent. Hook Support will reply here.','اتبعت. دعم هوك هيرد عليك هنا.'),async()=>{await loadReports();draw();say('m-rep',true,t('Sent. Hook Support will reply here.','اتبعت. دعم هوك هيرد عليك هنا.'))})};
+}
+async function start(){if(ME)await Promise.all([loadReports(),loadOrders()]);draw();const h=location.hash.slice(1);if(h&&$(h))$(h).scrollIntoView()}
+if(window.AUTH_DONE)start();else document.addEventListener('auth',start);
+document.addEventListener('langchange',()=>{if(window.AUTH_DONE)draw()});
+</script></body></html>

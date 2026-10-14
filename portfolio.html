@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Portfolio | Hook</title>
+<link rel="stylesheet" href="style.css"></head><body>
+<main>
+<section class="phero"><div class="wrap"><span class="script" data-ar="شغلنا">Our work</span><h1 data-ar="أعمالنا">Portfolio</h1>
+<p data-ar="تصميم ومحتوى وشراء إعلانات لبراندات في العقارات والشحن والتعليم واللايف ستايل.">Design, content and media buying for brands across real estate, shipping, education and lifestyle.</p></div></section>
+<section style="padding-top:20px"><div class="wrap">
+<div class="tabs" id="tabs" role="group" aria-label="Filter"></div>
+<div class="grid" id="work"></div>
+</div></section>
+</main><script src="config.js"></script><script src="seed.js"></script><script src="app.js"></script>
+<script>
+let cf='all';
+const vio=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){vio.unobserve(e.target);trackView(e.target.dataset.id)}}),{threshold:.6});
+onContent(()=>{
+  if(cf!=='all'&&!cats('work').some(c=>c.id===cf))cf='all';
+  $('tabs').innerHTML=[['all',t('All','الكل')]].concat(cats('work').map(c=>[c.id,L(c.name)])).map(c=>'<button data-f="'+esc(c[0])+'" aria-pressed="'+(c[0]==cf)+'">'+esc(c[1])+'</button>').join('');
+  const cn=k=>catName('work',k);
+  $('work').innerHTML=DB.work.filter(w=>cf=='all'||w.cat==cf).map(w=>'<article class="card work" data-k="work" data-id="'+esc(w.id)+'"><a data-view="'+esc(w.id)+'"'+(w.video?' data-video="'+esc(w.video)+'"':'')+' href="'+esc(w.img)+'" target="_blank" rel="noopener" aria-label="'+esc(L(w.name))+'"><img src="'+esc(w.img)+'" alt="'+esc(L(w.name))+'" loading="lazy">'+(w.video?'<span class="vplay">▶</span>':'')+'</a>'+(cn(w.cat)?'<span class="tag">'+esc(cn(w.cat))+'</span>':'')+'<h3>'+esc(L(w.name))+'</h3><p>'+esc(L(w.desc))+'</p></article>').join('');
+  document.querySelectorAll('#work .card').forEach(c=>vio.observe(c));
+});
+$('tabs').onclick=e=>{const b=e.target.closest('button');if(b){cf=b.dataset.f;runHooks()}};
+</script></body></html>
